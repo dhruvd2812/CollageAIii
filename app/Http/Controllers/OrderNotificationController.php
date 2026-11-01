@@ -17,8 +17,13 @@ class OrderNotificationController extends Controller
             'status' => 'required|in:sent,failed',
             'provider_message_id' => 'nullable|string|max:191',
             'error_message' => 'nullable|string|max:1000',
-            'notification_type' => 'nullable|string|max:100',
+            'notification_type' => 'nullable|string|in:owner_order_alert,owner_order_cancellation|max:100',
         ]);
+
+        $order = \App\Models\Order::findOrFail($validated['order_id']);
+        if (!$request->user() || (!$request->user()->isAdmin() && $order->user_id !== $request->user()->id)) {
+            abort(403);
+        }
 
         $record = $this->notificationService->recordResult(
             (int) $validated['order_id'],

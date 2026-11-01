@@ -88,6 +88,14 @@ class OrderService
                 $product = $cItem->product;
                 $primaryImg = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
 
+                // Check and decrement stock if managed
+                if ($product->manage_stock) {
+                    if ($product->stock_quantity < $cItem->quantity) {
+                        throw new Exception("Insufficient stock for \"{$product->name}\". Only {$product->stock_quantity} remaining.");
+                    }
+                    $product->decrement('stock_quantity', $cItem->quantity);
+                }
+
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,

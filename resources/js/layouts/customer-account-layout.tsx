@@ -21,8 +21,14 @@ interface AccountLayoutProps {
 
 export default function CustomerAccountLayout({ children, title, description }: AccountLayoutProps) {
     const pageProps = usePage().props as any;
+    const cancellationPayload = pageProps?.flash?.emailjs_cancellation_payload;
     const auth = pageProps?.auth || {};
     const url = usePage().url;
+
+    React.useEffect(() => {
+        if (!cancellationPayload) return;
+        import('@/lib/emailjs').then(({ sendOrderNotificationEmail }) => sendOrderNotificationEmail(cancellationPayload));
+    }, [cancellationPayload]);
 
     const navLinks = [
         { title: 'Overview', href: '/account', icon: Layers, active: url === '/account' },

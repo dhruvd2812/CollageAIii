@@ -1,5 +1,5 @@
-import { Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle, Clock, Download, Package, Truck } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, CheckCircle, Clock, Download, Package, Truck, XCircle } from 'lucide-react';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import CustomerAccountLayout from '@/layouts/customer-account-layout';
@@ -148,6 +148,19 @@ export default function OrderDetailPage({ order }: Props) {
                         <span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${paymentColor[order.payment_status] || 'bg-neutral-100 text-neutral-700'}`}>
                             {order.payment_status}
                         </span>
+                        {['pending', 'confirmed'].includes(order.order_status) && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (window.confirm('Cancel this order?')) {
+                                        router.post(`/account/orders/${order.order_number}/cancel`, {}, { preserveScroll: true });
+                                    }
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-50"
+                            >
+                                <XCircle className="size-3.5" /> Cancel order
+                            </button>
+                        )}
                     </div>
                 </div>
 

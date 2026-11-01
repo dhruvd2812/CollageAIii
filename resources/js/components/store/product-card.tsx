@@ -14,6 +14,8 @@ export interface ProductCardProps {
         discount_percent: number;
         primary_image_url: string;
         short_description?: string;
+        manage_stock?: boolean;
+        stock_quantity?: number;
         category?: {
             name: string;
             slug: string;
@@ -119,6 +121,13 @@ export default function ProductCard({ product, onAddedToCart }: ProductCardProps
                     </span>
                 )}
 
+                {/* Out of Stock Tag */}
+                {product.manage_stock && typeof product.stock_quantity === 'number' && product.stock_quantity <= 0 && (
+                    <span className="absolute top-3 left-3 rounded-full bg-neutral-900/90 text-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
+                        Out of Stock
+                    </span>
+                )}
+
                 {/* Wishlist Heart */}
                 <button
                     onClick={handleToggleWishlist}
@@ -169,14 +178,20 @@ export default function ProductCard({ product, onAddedToCart }: ProductCardProps
                         </span>
                     </div>
 
-                    <button
-                        onClick={handleQuickAdd}
-                        disabled={adding}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-rose-600 transition active:scale-95 shadow-sm disabled:opacity-50"
-                    >
-                        <ShoppingBag className="size-3.5" />
-                        <span>{adding ? '...' : 'Add'}</span>
-                    </button>
+                    {product.manage_stock && typeof product.stock_quantity === 'number' && product.stock_quantity <= 0 ? (
+                        <span className="text-[11px] font-bold text-neutral-400 bg-neutral-100 px-3 py-1 rounded-full">
+                            Sold Out
+                        </span>
+                    ) : (
+                        <button
+                            onClick={handleQuickAdd}
+                            disabled={adding}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-rose-600 transition active:scale-95 shadow-sm disabled:opacity-50"
+                        >
+                            <ShoppingBag className="size-3.5" />
+                            <span>{adding ? '...' : 'Add'}</span>
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

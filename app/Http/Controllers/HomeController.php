@@ -16,23 +16,15 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $featuredProducts = Product::where('status', 'active')
-            ->where('is_featured', true)
-            ->with(['category', 'images', 'options.values', 'reviews'])
+        $products = Product::where('status', 'active')
+            ->with(['category', 'images', 'primaryImage', 'options.values', 'reviews'])
             ->latest()
-            ->take(8)
-            ->get();
-
-        $popularProducts = Product::where('status', 'active')
-            ->with(['category', 'images', 'options.values', 'reviews'])
-            ->inRandomOrder()
-            ->take(8)
-            ->get();
+            ->paginate(16)
+            ->withQueryString();
 
         return Inertia::render('home', [
             'categories' => $categories,
-            'featuredProducts' => $featuredProducts,
-            'popularProducts' => $popularProducts,
+            'products' => $products,
         ]);
     }
 }

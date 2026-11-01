@@ -63,6 +63,20 @@ class CartService
     ): CartItem {
         $quantity = max(1, min(1000, $quantity));
 
+        // Inventory check: ensure product is active and has available stock
+        if ($product->status !== 'active') {
+            throw new Exception("This product is currently unavailable.");
+        }
+
+        if ($product->manage_stock) {
+            if ($product->stock_quantity <= 0) {
+                throw new Exception("Sorry, \"{$product->name}\" is currently out of stock.");
+            }
+            if ($quantity > $product->stock_quantity) {
+                throw new Exception("Only {$product->stock_quantity} units available for \"{$product->name}\".");
+            }
+        }
+
         // Calculate unit price based on base price and selected options
         $calculatedUnitPrice = $product->effective_price;
         $customizationPayload = [];
@@ -122,8 +136,13 @@ class CartService
                 ->first();
 
             if ($item) {
+                $newQuantity = $item->quantity + $quantity;
+                if ($product->manage_stock && $newQuantity > $product->stock_quantity) {
+                    throw new Exception("Cannot add more. Only {$product->stock_quantity} units available for \"{$product->name}\".");
+                }
+
                 $item->update([
-                    'quantity' => $item->quantity + $quantity,
+                    'quantity' => $newQuantity,
                     'unit_price' => $calculatedUnitPrice,
                 ]);
             } else {
@@ -153,6 +172,11 @@ class CartService
         if ($quantity <= 0) {
             $cartItem->delete();
             return null;
+        }
+
+        $product = $cartItem->product;
+        if ($product && $product->manage_stock && $quantity > $product->stock_quantity) {
+            throw new Exception("Only {$product->stock_quantity} units available for \"{$product->name}\".");
         }
 
         $cartItem->update(['quantity' => min(1000, $quantity)]);

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Address;
 use App\Models\EmailPreference;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
+use App\Services\OrderNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -90,6 +92,34 @@ class CustomerAccountController extends Controller
         return Inertia::render('account/order-detail', [
             'order' => $order,
         ]);
+    }
+
+    public function cancelOrder(string $orderNumber, Request $request, OrderNotificationService $notificationService): RedirectResponse
+    {
+        $order = Order::where('order_number', $orderNumber)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if (!in_array($order->order_status, ['pending', 'confirmed'], true)) {
+            return redirect()->back()->withErrors(['order' => 'This order can no longer be cancelled online. Please contact the store.']);
+        }
+
+        $fromStatus = $order->order_status;
+        $order->update(['order_status' => 'cancelled', 'cancelled_at' => now()]);
+        OrderStatusHistory::create([
+            'order_id' => $order->id,
+            'changed_by_user_id' => $request->user()->id,
+            'from_status' => $fromStatus,
+            'to_status' => 'cancelled',
+            'note' => 'Order cancelled by customer.',
+        ]);
+
+        $payload = $notificationService->formatEmailPayload($order);
+        $payload['subject'] = 'Order Cancelled - ' . $order->order_number;
+        $payload['notification_type'] = 'owner_order_cancellation';
+        $request->session()->flash('emailjs_cancellation_payload', $payload);
+
+        return redirect()->back()->with('success', 'Your order was cancelled. We have queued an email notification for the store.');
     }
 
     public function addresses(Request $request): Response

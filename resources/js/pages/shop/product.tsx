@@ -36,6 +36,8 @@ interface ProductPageProps {
         short_description?: string;
         description?: string;
         stock_quantity: number;
+        manage_stock?: boolean;
+        low_stock_threshold?: number;
         is_customizable: boolean;
         category?: {
             id: number;
@@ -375,6 +377,24 @@ export default function ProductDetailPage({
                                 <span>{product.reviews.length} Verified Reviews</span>
                                 <span>•</span>
                                 <span className="font-semibold text-emerald-600">SKU: {product.sku}</span>
+                                {product.manage_stock && (
+                                    <>
+                                        <span>•</span>
+                                        {product.stock_quantity <= 0 ? (
+                                            <span className="font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[11px]">
+                                                Out of Stock
+                                            </span>
+                                        ) : product.stock_quantity <= (product.low_stock_threshold || 5) ? (
+                                            <span className="font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">
+                                                Only {product.stock_quantity} left in stock!
+                                            </span>
+                                        ) : (
+                                            <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px]">
+                                                In Stock ({product.stock_quantity} available)
+                                            </span>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -516,54 +536,75 @@ export default function ProductDetailPage({
 
                         {/* Quantity and Actions */}
                         <div className="pt-2 space-y-3">
-                            <div className="flex items-center gap-3">
-                                {/* Quantity controls */}
-                                <div className="flex items-center rounded-full border border-neutral-300 bg-white px-3 py-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                                        className="text-neutral-600 hover:text-neutral-900 px-1"
-                                    >
-                                        <Minus className="size-3.5" />
-                                    </button>
-                                    <span className="w-8 text-center text-xs font-extrabold">{quantity}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setQuantity((q) => q + 1)}
-                                        className="text-neutral-600 hover:text-neutral-900 px-1"
-                                    >
-                                        <Plus className="size-3.5" />
-                                    </button>
+                            {product.manage_stock && product.stock_quantity <= 0 ? (
+                                <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-center">
+                                    <p className="text-sm font-extrabold text-red-600">Currently Out of Stock</p>
+                                    <p className="text-xs text-neutral-500 mt-0.5">
+                                        This item is temporarily unavailable for purchase. Please check back soon!
+                                    </p>
                                 </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-3">
+                                        {/* Quantity controls */}
+                                        <div className="flex items-center rounded-full border border-neutral-300 bg-white px-3 py-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                                                className="text-neutral-600 hover:text-neutral-900 px-1 disabled:opacity-30"
+                                                disabled={quantity <= 1}
+                                            >
+                                                <Minus className="size-3.5" />
+                                            </button>
+                                            <span className="w-8 text-center text-xs font-extrabold">{quantity}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setQuantity((q) =>
+                                                        product.manage_stock
+                                                            ? Math.min(product.stock_quantity, q + 1)
+                                                            : q + 1
+                                                    )
+                                                }
+                                                className="text-neutral-600 hover:text-neutral-900 px-1 disabled:opacity-30"
+                                                disabled={
+                                                    product.manage_stock && quantity >= product.stock_quantity
+                                                }
+                                            >
+                                                <Plus className="size-3.5" />
+                                            </button>
+                                        </div>
 
-                                {/* Add to Bag Button */}
-                                <button
-                                    onClick={() => handleAddToCart(false)}
-                                    disabled={addingToCart}
-                                    className="flex-1 rounded-full bg-neutral-950 py-3.5 text-xs sm:text-sm font-bold text-white hover:bg-neutral-800 transition active:scale-95 shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
-                                >
-                                    <ShoppingBag className="size-4" />
-                                    <span>{addingToCart ? 'Adding to Bag...' : `Add to Bag (₹${lineTotal})`}</span>
-                                </button>
+                                        {/* Add to Bag Button */}
+                                        <button
+                                            onClick={() => handleAddToCart(false)}
+                                            disabled={addingToCart}
+                                            className="flex-1 rounded-full bg-neutral-950 py-3.5 text-xs sm:text-sm font-bold text-white hover:bg-neutral-800 transition active:scale-95 shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            <ShoppingBag className="size-4" />
+                                            <span>{addingToCart ? 'Adding to Bag...' : `Add to Bag (₹${lineTotal})`}</span>
+                                        </button>
 
-                                {/* Wishlist Button */}
-                                <button
-                                    onClick={handleToggleWishlist}
-                                    aria-label="Wishlist"
-                                    className="flex size-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-rose-600 transition"
-                                >
-                                    <Heart className={`size-5 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
-                                </button>
-                            </div>
+                                        {/* Wishlist Button */}
+                                        <button
+                                            onClick={handleToggleWishlist}
+                                            aria-label="Wishlist"
+                                            className="flex size-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-rose-600 transition"
+                                        >
+                                            <Heart className={`size-5 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+                                        </button>
+                                    </div>
 
-                            {/* Buy Now Direct Button */}
-                            <button
-                                onClick={() => handleAddToCart(true)}
-                                disabled={buyingNow}
-                                className="w-full rounded-full bg-gradient-to-r from-rose-600 to-amber-600 py-3.5 text-xs sm:text-sm font-extrabold text-white hover:brightness-110 shadow-lg shadow-rose-600/20 transition active:scale-95 disabled:opacity-50"
-                            >
-                                {buyingNow ? 'Redirecting to Checkout...' : 'Buy Now with 1-Click'}
-                            </button>
+                                    {/* Buy Now Direct Button */}
+                                    <button
+                                        onClick={() => handleAddToCart(true)}
+                                        disabled={buyingNow}
+                                        className="w-full rounded-full bg-gradient-to-r from-rose-600 to-amber-600 py-3.5 text-xs sm:text-sm font-extrabold text-white hover:brightness-110 shadow-lg shadow-rose-600/20 transition active:scale-95 disabled:opacity-50"
+                                    >
+                                        {buyingNow ? 'Redirecting to Checkout...' : 'Buy Now with 1-Click'}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

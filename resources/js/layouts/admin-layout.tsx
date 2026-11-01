@@ -22,12 +22,12 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children, title }: AdminLayoutProps) {
     const pageProps = usePage().props as any;
     const auth = pageProps?.auth || {};
-    const url = usePage().url;
+    const currentUrl = usePage().url || '';
 
     return (
         <div className="min-h-screen bg-neutral-100 text-neutral-900 font-sans antialiased flex flex-col">
             <Head>
-                <title>{title} | Admin Portal - PRINTWITHDWARKESH</title>
+                <title>{`${title} | Admin Portal - PRINTWITHDWARKESH`}</title>
             </Head>
 
             {/* Admin Header */}
@@ -52,7 +52,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
                             <Link
                                 href="/admin"
                                 className={`rounded-full px-3.5 py-1.5 transition ${
-                                    url === '/admin'
+                                    currentUrl === '/admin' || currentUrl.startsWith('/admin/dashboard')
                                         ? 'bg-neutral-800 text-white'
                                         : 'text-neutral-400 hover:text-white'
                                 }`}
@@ -60,9 +60,19 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
                                 Dashboard
                             </Link>
                             <Link
+                                href="/admin/products"
+                                className={`rounded-full px-3.5 py-1.5 transition ${
+                                    currentUrl.startsWith('/admin/products')
+                                        ? 'bg-neutral-800 text-white'
+                                        : 'text-neutral-400 hover:text-white'
+                                }`}
+                            >
+                                Products
+                            </Link>
+                            <Link
                                 href="/admin/orders"
                                 className={`rounded-full px-3.5 py-1.5 transition ${
-                                    url.startsWith('/admin/orders')
+                                    currentUrl.startsWith('/admin/orders')
                                         ? 'bg-neutral-800 text-white'
                                         : 'text-neutral-400 hover:text-white'
                                 }`}
@@ -81,7 +91,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
                             <span>Storefront</span>
                         </Link>
                         <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-neutral-400 border-l border-neutral-800 pl-3">
-                            <span>{auth.user?.name}</span>
+                            <span>{auth.user?.name || 'Store Manager'}</span>
                         </div>
                     </div>
                 </div>

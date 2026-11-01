@@ -82,6 +82,16 @@ class Product extends Model
         return $this->hasMany(Wishlist::class);
     }
 
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function allOptions(): HasMany
+    {
+        return $this->hasMany(ProductOption::class)->orderBy('sort_order');
+    }
+
     protected function effectivePrice(): Attribute
     {
         return Attribute::make(

@@ -17,6 +17,8 @@ export interface OrderEmailPayload {
     payment_method?: string;
     order_status: string;
     order_date: string;
+    subject?: string;
+    notification_type?: string;
 }
 
 export interface SendEmailResult {
@@ -41,7 +43,7 @@ export async function sendOrderNotificationEmail(payload: OrderEmailPayload): Pr
         console.warn('[PRINTWITHDWARKESH EmailJS Notice]:', warningMsg);
 
         // Record notification attempt as pending/not configured in backend without crashing
-        await recordNotificationStatus(payload.order_id, 'failed', undefined, 'EmailJS keys not configured in .env');
+        await recordNotificationStatus(payload.order_id, 'failed', undefined, 'EmailJS keys not configured in .env', payload.notification_type);
 
         return {
             success: false,
@@ -67,8 +69,8 @@ export async function sendOrderNotificationEmail(payload: OrderEmailPayload): Pr
             payment_method: payload.payment_method || 'Cash on Delivery',
             order_status: payload.order_status,
             order_date: payload.order_date,
-            to_email: 'owner@printwithdwarkesh.com',
-            subject: `New Order - ${payload.order_number}`,
+            to_email: import.meta.env.VITE_EMAILJS_OWNER_EMAIL || '',
+            subject: payload.subject || `New Order - ${payload.order_number}`,
         };
 
         const response = await emailjs.send(serviceId, templateId, templateParams, publicKey);
@@ -76,7 +78,7 @@ export async function sendOrderNotificationEmail(payload: OrderEmailPayload): Pr
         const providerId = response.text || `status-${response.status}`;
 
         // Record successful notification in backend
-        await recordNotificationStatus(payload.order_id, 'sent', providerId);
+        await recordNotificationStatus(payload.order_id, 'sent', providerId, undefined, payload.notification_type);
 
         return {
             success: true,
@@ -87,7 +89,7 @@ export async function sendOrderNotificationEmail(payload: OrderEmailPayload): Pr
         console.error('[EmailJS Send Error]:', errorMsg);
 
         // Record failure in backend
-        await recordNotificationStatus(payload.order_id, 'failed', undefined, errorMsg);
+        await recordNotificationStatus(payload.order_id, 'failed', undefined, errorMsg, payload.notification_type);
 
         return {
             success: false,
@@ -103,7 +105,8 @@ async function recordNotificationStatus(
     orderId: number,
     status: 'sent' | 'failed',
     providerMessageId?: string,
-    errorMessage?: string
+    errorMessage?: string,
+    notificationType?: string
 ): Promise<void> {
     try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -120,7 +123,7 @@ async function recordNotificationStatus(
                 status: status,
                 provider_message_id: providerMessageId,
                 error_message: errorMessage,
-                notification_type: 'owner_order_alert',
+                notification_type: notificationType || 'owner_order_alert',
             }),
         });
     } catch (e) {

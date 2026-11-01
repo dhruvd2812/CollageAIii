@@ -49,14 +49,24 @@ class CartController extends Controller
         $product = Product::with(['options.values'])->findOrFail($request->input('product_id'));
         $cart = $this->cartService->getOrCreateCart($request->user(), $request->session()->getId());
 
-        $item = $this->cartService->addItem(
-            $cart,
-            $product,
-            (int) $request->input('quantity', 1),
-            $request->input('options', []),
-            $request->input('upload_id') ? (int) $request->input('upload_id') : null,
-            $request->input('notes')
-        );
+        try {
+            $item = $this->cartService->addItem(
+                $cart,
+                $product,
+                (int) $request->input('quantity', 1),
+                $request->input('options', []),
+                $request->input('upload_id') ? (int) $request->input('upload_id') : null,
+                $request->input('notes')
+            );
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         $couponCode = $request->session()->get('cart_coupon');
         $summary = $this->cartService->calculateSummary($cart, $couponCode, $request->user()?->id);
@@ -79,7 +89,17 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:0|max:1000',
         ]);
 
-        $this->cartService->updateItemQuantity($cartItem, (int) $request->input('quantity'));
+        try {
+            $this->cartService->updateItemQuantity($cartItem, (int) $request->input('quantity'));
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+            return redirect()->back()->with('error', $e->getMessage());
+        }
         $cart = $this->cartService->getOrCreateCart($request->user(), $request->session()->getId());
         $couponCode = $request->session()->get('cart_coupon');
         $summary = $this->cartService->calculateSummary($cart, $couponCode, $request->user()?->id);

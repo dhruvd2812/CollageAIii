@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminOrderController;
+use App\Http\Controllers\AdminProductController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerAccountController;
@@ -20,31 +21,44 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Homepage
-Route::get('/', [HomeController::class, 'index'])->name('home');
+// Homepage / Initial Entry: Forces Login first
+Route::get('/', function (\Illuminate\Http\Request $request) {
+    if (!$request->user()) {
+        return redirect()->route('login');
+    }
 
-// Shop & Product Discovery
-Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
-Route::get('/category/{category}', [ShopController::class, 'category'])->name('shop.category');
-Route::get('/product/{product}', [ShopController::class, 'show'])->name('shop.product');
-Route::get('/search', [ShopController::class, 'search'])->name('shop.search');
+    if ($request->user()->isAdmin()) {
+        return redirect()->route('admin.dashboard');
+    }
 
-// Shopping Bag / Cart
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart/items', [CartController::class, 'store'])->name('cart.store');
-Route::put('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
-Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
-Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
-Route::get('/cart/summary', [CartController::class, 'summary'])->name('cart.summary');
+    return redirect()->route('shop.index');
+})->name('home');
 
-// File / Design Uploads
-Route::post('/uploads/design', [UploadController::class, 'store'])->name('upload.design');
+// Authenticated Storefront Routes (Flipkart Shopping Experience)
+Route::middleware(['auth'])->group(function () {
+    // Shop & Product Discovery
+    Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
+    Route::get('/category/{category}', [ShopController::class, 'category'])->name('shop.category');
+    Route::get('/product/{product}', [ShopController::class, 'show'])->name('shop.product');
+    Route::get('/search', [ShopController::class, 'search'])->name('shop.search');
 
-// Checkout & Orders
-Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
-Route::get('/order-success/{order}', [OrderSuccessController::class, 'show'])->name('order.success');
+    // Shopping Bag / Cart
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/items', [CartController::class, 'store'])->name('cart.store');
+    Route::put('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
+    Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
+    Route::get('/cart/summary', [CartController::class, 'summary'])->name('cart.summary');
+
+    // File / Design Uploads
+    Route::post('/uploads/design', [UploadController::class, 'store'])->name('upload.design');
+
+    // Checkout & Orders
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
+    Route::get('/order-success/{order}', [OrderSuccessController::class, 'show'])->name('order.success');
+});
 
 // Order Notification Status Webhook / Callback
 Route::post('/api/order-notifications/record', [OrderNotificationController::class, 'recordBrowserEmail'])->name('order.notifications.record');
@@ -70,8 +84,13 @@ Route::get('/refund-policy', [PageController::class, 'refundPolicy'])->name('pag
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Default dashboard redirects to customer account
-    Route::get('/dashboard', fn () => redirect()->route('account.index'))->name('dashboard');
+    // Role-based redirect on login
+    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+        if ($request->user() && $request->user()->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+        return redirect()->route('shop.index');
+    })->name('dashboard');
 
     // Customer Account
     Route::get('/account', [CustomerAccountController::class, 'index'])->name('account.index');
@@ -80,6 +99,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/account/orders', [CustomerAccountController::class, 'orders'])->name('account.orders');
     Route::get('/account/orders/{order}', [CustomerAccountController::class, 'orderDetail'])->name('account.orders.show');
+    Route::post('/account/orders/{order}/cancel', [CustomerAccountController::class, 'cancelOrder'])->name('account.orders.cancel');
     
     Route::get('/account/addresses', [CustomerAccountController::class, 'addresses'])->name('account.addresses');
     Route::post('/account/addresses', [CustomerAccountController::class, 'storeAddress'])->name('account.addresses.store');
@@ -102,11 +122,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     */
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminOrderController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [AdminOrderController::class, 'dashboard'])->name('dashboard.view');
         Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
         Route::put('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
         Route::put('/orders/{order}/payment', [AdminOrderController::class, 'updatePayment'])->name('orders.payment');
         Route::put('/orders/{order}/tracking', [AdminOrderController::class, 'updateTracking'])->name('orders.tracking');
+
+        // Products Management
+        Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
+        Route::get('/products/create', [AdminProductController::class, 'create'])->name('products.create');
+        Route::post('/products', [AdminProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{product}/edit', [AdminProductController::class, 'edit'])->name('products.edit');
+        Route::put('/products/{product}', [AdminProductController::class, 'update'])->name('products.update');
+        Route::patch('/products/{product}/toggle-status', [AdminProductController::class, 'toggleStatus'])->name('products.toggle-status');
+        Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
     });
 });
 

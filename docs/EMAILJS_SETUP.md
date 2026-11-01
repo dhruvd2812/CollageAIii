@@ -80,7 +80,10 @@ Add the following placeholders to your `.env` file (never commit your secret val
 VITE_EMAILJS_SERVICE_ID=your_service_id_here
 VITE_EMAILJS_TEMPLATE_ID=your_template_id_here
 VITE_EMAILJS_PUBLIC_KEY=your_public_key_here
+VITE_EMAILJS_OWNER_EMAIL=your_business_email_here
 ```
+
+Use one EmailJS template for both new order and cancellation notices. The subject is supplied as `{{subject}}`, and the template's **To Email** should use `{{to_email}}`. Cancellation emails include `Order Cancelled` in the subject and `CANCELLED` as the order status.
 
 ---
 
